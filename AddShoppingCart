@@ -1,0 +1,6 @@
+
+Create Procedure AddShoppingCarts @productId int, @quantity int =1   --ürün ve adet bilgisi giriyoruz
+as
+begin
+insert into ShoppingCarts values(@productId, @quantity)
+end
