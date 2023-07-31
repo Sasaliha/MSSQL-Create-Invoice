@@ -1,0 +1,68 @@
+ALTER PROCEDURE [dbo].[CompleteShopping]
+
+	@paymentType varchar (50)
+
+AS
+BEGIN
+DECLARE @invoiceId int;
+DECLARE @invoiceNumber varchar(36);
+DECLARE @paymentAmount money;
+
+BEGIN TRANSACTION; --birden fazla tabloya kayıt atmak 
+BEGIN TRY
+
+		--fatura numarasını rastgele dönüştürdük
+		SELECT @invoiceNumber = CAST (NEWID() AS varchar (36));
+
+		--sepetteki toplam tutarı bulduk
+		SELECT @paymentAmount = SUM (((p.Price*sp.Quantity) * p.VatRate/100)+ (p.Price * sp.Quantity))
+		FROM dbo.ShoppingCarts  as sp
+		JOIN dbo.Products as p ON sp.ProductId=p.Id;
+
+		-- fatura olusturuyoruz
+
+		INSERT INTO dbo.Invoices (InvoiceNumber, Date)
+		VALUES (@invoiceNumber, GETDATE())
+
+		--fatura numarasını alıyoruz
+
+		SET @invoiceId=SCOPE_IDENTITY ();
+
+		--sepetteki tüm ürünleri fatura detaylarına ekliyoruz
+		INSERT INTO dbo.InvoicesDetails (ProductId,Quantity, Price, Discount,InvoiceId, VatRate, Vat, Total, GeneralTotal)
+
+		SELECT
+
+			ProductId,
+			Quantity,
+			Products.Price,
+			0,-- örnekte indirim uygulanmamaktadır
+			@invoiceId,
+			Products.VatRate,
+			((Products.Price*Quantity) *  Products.VatRate /100) ,
+			(Products.Price*Quantity),
+			(Products.Price*Quantity) + ((Products.Price*Quantity)* Products.VatRate/100)
+
+		FROM dbo.ShoppingCarts
+		JOIN dbo.Products on ShoppingCarts.ProductId=Products.Id
+
+		--ödeme bilgilerini kaydettik
+
+		INSERT INTO dbo.Payments (InvoiceId, Payment, PaymentType)
+		VALUES( @invoiceId, @paymentAmount, @paymentType);
+
+		--sepeti temizledik
+		DELETE FROM dbo.ShoppingCarts;
+
+		COMMIT;
+
+	END TRY
+
+	BEGIN CATCH
+
+	--HATA DURUMUNDA İŞLEMLERİ GERİ AL
+	ROLLBACK;
+	THROW; -- HATA BİLGİLERİNİ DÖNDÜRDÜK
+END CATCH
+
+END; 
