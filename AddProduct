@@ -1,0 +1,7 @@
+ALTER Procedure [dbo].[AddProduct] @name varchar(50), @barcodeNumber varchar(50), @stock int, @price money, @vatRate int
+
+AS
+BEGIN
+insert into Products values (@name, @barcodeNumber, @stock, @price, @vatRate)
+
+END
